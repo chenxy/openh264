@@ -29,11 +29,11 @@
  *     POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * \file	set_mb_syn_cavlc.h
+ * \file    set_mb_syn_cavlc.h
  *
- * \brief	Seting all syntax elements of mb and decoding residual with cavlc
+ * \brief   Seting all syntax elements of mb and decoding residual with cavlc
  *
- * \date	05/19/2009 Created
+ * \date    05/19/2009 Created
  *
  *************************************************************************************
  */
@@ -42,54 +42,46 @@
 #define SET_MB_SYN_CAVLC_H_
 
 #include "typedefs.h"
-#include "bit_stream.h"
+#include "wels_func_ptr_def.h"
 
-namespace WelsSVCEnc {
-//#pragma pack(1)
-
+namespace WelsEnc {
 
 
-enum EResidualProperty {
-LUMA_DC     = 0,
-LUMA_AC     = 1,
-LUMA_4x4    = 2,
-CHROMA_DC   = 3,
-CHROMA_AC   = 4
+enum ECtxBlockCat {
+  LUMA_DC     = 0,
+  LUMA_AC     = 1,
+  LUMA_4x4    = 2,
+  CHROMA_DC   = 3,
+  CHROMA_AC   = 4
 };
 
 
 #define LUMA_DC_AC    0x04
 
-typedef  int32_t (*PCavlcParamCalFunc) (int16_t* pCoff, uint8_t* pRun, int16_t* pLevel, int32_t* pTotalCoeffs,
-                                        int32_t iEndIdx);
-
-typedef  struct TagCoeffFunc {
-PCavlcParamCalFunc    pfCavlcParamCal;
-} SCoeffFunc;
-
-/*  For CAVLC   */
-extern SCoeffFunc    sCoeffFunc;
-
 typedef struct TagCavlcTableItem {
-uint16_t uiBits;
-uint8_t  uiLen;
-uint8_t  uiSuffixLength;
+  uint16_t uiBits;
+  uint8_t  uiLen;
+  uint8_t  uiSuffixLength;
 } SCavlcTableItem;
 
-void  InitCoeffFunc (const uint32_t uiCpuFlag);
+void  InitCoeffFunc (SWelsFuncPtrList* pFuncList, const uint32_t uiCpuFlag,int32_t iEntropyCodingModeFlag);
 
-void  InitCavlcTable();
+int32_t  WriteBlockResidualCavlc (SWelsFuncPtrList* pFuncList, int16_t* pCoffLevel, int32_t iEndIdx,
+                                  int32_t iCalRunLevelFlag,
+                                  int32_t iResidualProperty, int8_t iNC, SBitStringAux* pBs);
 
-void  WriteBlockResidualCavlc (int16_t* pCoffLevel, int32_t iEndIdx, int32_t iCalRunLevelFlag,
-                               int32_t iResidualProperty, int8_t iNC, SBitStringAux* pBs);
 
 #if defined(__cplusplus)
 extern "C" {
 #endif//__cplusplus
 
+int32_t CavlcParamCal_c (int16_t* pCoffLevel, uint8_t* pRun, int16_t* pLevel, int32_t* pTotalCoeffs ,
+                         int32_t iEndIdx);
 #ifdef  X86_ASM
 int32_t CavlcParamCal_sse2 (int16_t* pCoffLevel, uint8_t* pRun, int16_t* pLevel, int32_t* pTotalCoeffs ,
                             int32_t iEndIdx);
+int32_t CavlcParamCal_sse42 (int16_t* pCoffLevel, uint8_t* pRun, int16_t* pLevel, int32_t* pTotalCoeffs ,
+                             int32_t iEndIdx);
 #endif
 
 #if defined(__cplusplus)
@@ -97,5 +89,4 @@ int32_t CavlcParamCal_sse2 (int16_t* pCoffLevel, uint8_t* pRun, int16_t* pLevel,
 #endif//__cplusplus
 
 }
-//#pragma pack()
 #endif

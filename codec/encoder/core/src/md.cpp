@@ -29,28 +29,21 @@
  *     POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * \file	md.c
+ * \file    md.c
  *
- * \brief	mode decision
+ * \brief   mode decision
  *
- * \date	2009.05.14 Created
+ * \date    2009.05.14 Created
  *
  *************************************************************************************
  */
 
-#include <string.h>
 #include "ls_defines.h"
-#include "encoder_context.h"
-#include "svc_enc_slice_segment.h"
 #include "md.h"
-#include "mc.h"
-#include "mv_pred.h"
 #include "cpu_core.h"
 #include "svc_enc_golomb.h"
-#include "sample.h"
-#include "array_stack_align.h"
 
-namespace WelsSVCEnc {
+namespace WelsEnc {
 #define INTRA_VARIANCE_SAD_THRESHOLD 150
 #define INTER_VARIANCE_SAD_THRESHOLD 20
 
@@ -439,29 +432,29 @@ uint8_t MdInterAnalysisVaaInfo_c (int32_t* pSad8x8) {
   return (uiMbSign);
 }
 
-static inline int32_t AnalysisVaaInfoIntra_c (uint8_t* pDataY, const int32_t kiLineSize) {
+int32_t AnalysisVaaInfoIntra_c (uint8_t* pDataY, const int32_t kiLineSize) {
   ENFORCE_STACK_ALIGN_1D (uint16_t, uiAvgBlock, 16, 16)
   uint16_t* pBlock = &uiAvgBlock[0];
-  uint8_t* pEncData	= pDataY;
-  const int32_t kiLineSize2	= kiLineSize << 1;
-  const int32_t kiLineSize3	= kiLineSize + kiLineSize2;
-  const int32_t kiLineSize4	= kiLineSize << 2;
+  uint8_t* pEncData         = pDataY;
+  const int32_t kiLineSize2 = kiLineSize << 1;
+  const int32_t kiLineSize3 = kiLineSize + kiLineSize2;
+  const int32_t kiLineSize4 = kiLineSize << 2;
   int32_t i = 0, j = 0, num = 0;
   int32_t iSumAvg = 0, iSumSqr = 0;
 
-//	analysis_vaa_info_intra_core_c( pDataY, iLineSize, pBlock );
+//  analysis_vaa_info_intra_core_c( pDataY, iLineSize, pBlock );
   for (; j < 16; j += 4) {
     num = 0;
     for (i = 0; i < 16; i += 4, num ++) {
-      pBlock[num]	=  pEncData[i          ] + pEncData[i + 1          ] + pEncData[i + 2          ] + pEncData[i +
-                     3          ];
-      pBlock[num]	+= pEncData[i + kiLineSize ] + pEncData[i + kiLineSize + 1 ] + pEncData[i + kiLineSize + 2 ] + pEncData[i +
-                     kiLineSize + 3 ];
-      pBlock[num]	+= pEncData[i + kiLineSize2] + pEncData[i + kiLineSize2 + 1] + pEncData[i + kiLineSize2 + 2] + pEncData[i +
+      pBlock[num] =  pEncData[i              ] + pEncData[i + 1              ] + pEncData[i + 2              ] + pEncData[i +
+                     3              ];
+      pBlock[num] += pEncData[i + kiLineSize ] + pEncData[i + kiLineSize  + 1] + pEncData[i + kiLineSize  + 2] + pEncData[i +
+                     kiLineSize  + 3];
+      pBlock[num] += pEncData[i + kiLineSize2] + pEncData[i + kiLineSize2 + 1] + pEncData[i + kiLineSize2 + 2] + pEncData[i +
                      kiLineSize2 + 3];
-      pBlock[num]	+= pEncData[i + kiLineSize3] + pEncData[i + kiLineSize3 + 1] + pEncData[i + kiLineSize3 + 2] + pEncData[i +
+      pBlock[num] += pEncData[i + kiLineSize3] + pEncData[i + kiLineSize3 + 1] + pEncData[i + kiLineSize3 + 2] + pEncData[i +
                      kiLineSize3 + 3];
-      pBlock[num]	>>=  4;
+      pBlock[num] >>=  4;
     }
     pBlock += 4;
     pEncData += kiLineSize4;
@@ -482,30 +475,30 @@ static inline int32_t AnalysisVaaInfoIntra_c (uint8_t* pDataY, const int32_t kiL
 
 // for pfGetVarianceFromIntraVaa function ptr adaptive by CPU features, 6/7/2010
 void InitIntraAnalysisVaaInfo (SWelsFuncPtrList* pFuncList, const uint32_t kuiCpuFlag) {
-  pFuncList->pfGetVarianceFromIntraVaa		= AnalysisVaaInfoIntra_c;
-  pFuncList->pfGetMbSignFromInterVaa	= MdInterAnalysisVaaInfo_c;
-  pFuncList->pfUpdateMbMv					= UpdateMbMv_c;
+  pFuncList->pfGetVarianceFromIntraVaa      = AnalysisVaaInfoIntra_c;
+  pFuncList->pfGetMbSignFromInterVaa        = MdInterAnalysisVaaInfo_c;
+  pFuncList->pfUpdateMbMv                   = UpdateMbMv_c;
 
 #if defined(X86_ASM)
   if ((kuiCpuFlag & WELS_CPU_SSE2) == WELS_CPU_SSE2) {
-    pFuncList->pfGetVarianceFromIntraVaa		= AnalysisVaaInfoIntra_sse2;
-    pFuncList->pfGetMbSignFromInterVaa	= MdInterAnalysisVaaInfo_sse2;
-    pFuncList->pfUpdateMbMv					= UpdateMbMv_sse2;
+    pFuncList->pfGetVarianceFromIntraVaa    = AnalysisVaaInfoIntra_sse2;
+    pFuncList->pfGetMbSignFromInterVaa      = MdInterAnalysisVaaInfo_sse2;
+    pFuncList->pfUpdateMbMv                 = UpdateMbMv_sse2;
   }
   if ((kuiCpuFlag & WELS_CPU_SSSE3) == WELS_CPU_SSSE3) {
-    pFuncList->pfGetVarianceFromIntraVaa	= AnalysisVaaInfoIntra_ssse3;
+    pFuncList->pfGetVarianceFromIntraVaa    = AnalysisVaaInfoIntra_ssse3;
   }
   if ((kuiCpuFlag & WELS_CPU_SSE41) == WELS_CPU_SSE41) {
-    pFuncList->pfGetMbSignFromInterVaa	= MdInterAnalysisVaaInfo_sse41;
+    pFuncList->pfGetMbSignFromInterVaa      = MdInterAnalysisVaaInfo_sse41;
   }
 #endif//X86_ASM
 }
 
-BOOL_T MdIntraAnalysisVaaInfo (sWelsEncCtx* pEncCtx, uint8_t* pEncMb) {
+bool MdIntraAnalysisVaaInfo (sWelsEncCtx* pEncCtx, uint8_t* pEncMb) {
 
-  SDqLayer* pCurDqLayer	= pEncCtx->pCurDqLayer;
+  SDqLayer* pCurDqLayer     = pEncCtx->pCurDqLayer;
   const int32_t kiLineSize  = pCurDqLayer->iEncStride[0];
-  const int32_t kiVariance	= pEncCtx->pFuncList->pfGetVarianceFromIntraVaa (pEncMb, kiLineSize);
+  const int32_t kiVariance  = pEncCtx->pFuncList->pfGetVarianceFromIntraVaa (pEncMb, kiLineSize);
   return (kiVariance >= INTRA_VARIANCE_SAD_THRESHOLD);
 }
 
@@ -529,49 +522,48 @@ typedef struct TagQuarParams {
 } SQuarRefineParams;
 
 #define SWITCH_BEST_TMP_BUF(prev_best, curr_best){\
-	pParams->iBestCost = iCurCost;\
-	pTmp = prev_best;\
-	prev_best = curr_best;\
-	curr_best = pTmp;\
+  pParams->iBestCost = iCurCost;\
+  pTmp = prev_best;\
+  prev_best = curr_best;\
+  curr_best = pTmp;\
 }
 #define CALC_COST(me_buf, lm) ( pFunc->sSampleDealingFuncs.pfMeCost[kuiPixel](pEncMb, iStrideEnc, me_buf, ME_REFINE_BUF_STRIDE) + lm )
 
 inline void MeRefineQuarPixel (SWelsFuncPtrList* pFunc, SWelsME* pMe, SMeRefinePointer* pMeRefine,
                                const int32_t kiWidth, const int32_t kiHeight, SQuarRefineParams* pParams, int32_t iStrideEnc) {
-  PWelsSampleAveragingFunc* pSampleAvg	= pFunc->sMcFuncs.pfSampleAveraging;
-  const int32_t kiAvgIndex		= kiWidth >> 4;
+  PWelsSampleAveragingFunc pSampleAvg   = pFunc->sMcFuncs.pfSampleAveraging;
   int32_t iCurCost;
-  uint8_t* pEncMb				= pMe->pEncMb;
-  uint8_t* pTmp				= NULL;
-  const uint8_t kuiPixel		= pMe->uiPixel;
+  uint8_t* pEncMb                       = pMe->pEncMb;
+  uint8_t* pTmp                         = NULL;
+  const uint8_t kuiPixel                = pMe->uiBlockSize;
 
-  pSampleAvg[kiAvgIndex] (pMeRefine->pQuarPixTmp, ME_REFINE_BUF_STRIDE, pParams->pSrcA[0], ME_REFINE_BUF_STRIDE,
-                          pParams->pSrcB[0], pParams->iStrideA, kiHeight);
+  pSampleAvg (pMeRefine->pQuarPixTmp, ME_REFINE_BUF_STRIDE, pParams->pSrcA[0], ME_REFINE_BUF_STRIDE,
+              pParams->pSrcB[0], pParams->iStrideA, kiWidth, kiHeight);
 
   iCurCost = CALC_COST (pMeRefine->pQuarPixTmp, pParams->iLms[0]);
   if (iCurCost < pParams->iBestCost) {
-    pParams->iBestQuarPix =	ME_QUAR_PIXEL_TOP;
+    pParams->iBestQuarPix = ME_QUAR_PIXEL_TOP;
     SWITCH_BEST_TMP_BUF (pMeRefine->pQuarPixBest, pMeRefine->pQuarPixTmp);
   }
   //=========================(0, 1)=======================//
-  pSampleAvg[kiAvgIndex] (pMeRefine->pQuarPixTmp, ME_REFINE_BUF_STRIDE, pParams->pSrcA[1],
-                          ME_REFINE_BUF_STRIDE, pParams->pSrcB[1], pParams->iStrideA, kiHeight);
+  pSampleAvg (pMeRefine->pQuarPixTmp, ME_REFINE_BUF_STRIDE, pParams->pSrcA[1],
+              ME_REFINE_BUF_STRIDE, pParams->pSrcB[1], pParams->iStrideA, kiWidth, kiHeight);
   iCurCost = CALC_COST (pMeRefine->pQuarPixTmp, pParams->iLms[1]);
   if (iCurCost < pParams->iBestCost) {
     pParams->iBestQuarPix = ME_QUAR_PIXEL_BOTTOM;
     SWITCH_BEST_TMP_BUF (pMeRefine->pQuarPixBest, pMeRefine->pQuarPixTmp);
   }
   //==========================(-1, 0)=========================//
-  pSampleAvg[kiAvgIndex] (pMeRefine->pQuarPixTmp, ME_REFINE_BUF_STRIDE, pParams->pSrcA[2],
-                          ME_REFINE_BUF_STRIDE, pParams->pSrcB[2], pParams->iStrideB, kiHeight);
+  pSampleAvg (pMeRefine->pQuarPixTmp, ME_REFINE_BUF_STRIDE, pParams->pSrcA[2],
+              ME_REFINE_BUF_STRIDE, pParams->pSrcB[2], pParams->iStrideB, kiWidth, kiHeight);
   iCurCost = CALC_COST (pMeRefine->pQuarPixTmp, pParams->iLms[2]);
   if (iCurCost < pParams->iBestCost) {
     pParams->iBestQuarPix = ME_QUAR_PIXEL_LEFT;
     SWITCH_BEST_TMP_BUF (pMeRefine->pQuarPixBest, pMeRefine->pQuarPixTmp);
   }
   //==========================(1, 0)=========================//
-  pSampleAvg[kiAvgIndex] (pMeRefine->pQuarPixTmp, ME_REFINE_BUF_STRIDE, pParams->pSrcA[3],
-                          ME_REFINE_BUF_STRIDE,	pParams->pSrcB[3], pParams->iStrideB,  kiHeight);
+  pSampleAvg (pMeRefine->pQuarPixTmp, ME_REFINE_BUF_STRIDE, pParams->pSrcA[3],
+              ME_REFINE_BUF_STRIDE, pParams->pSrcB[3], pParams->iStrideB,  kiWidth, kiHeight);
 
   iCurCost = CALC_COST (pMeRefine->pQuarPixTmp, pParams->iLms[3]);
   if (iCurCost < pParams->iBestCost) {
@@ -597,8 +589,8 @@ void MeRefineFracPixel (sWelsEncCtx* pEncCtx, uint8_t* pMemPredInterMb, SWelsME*
   int32_t iBestQuarPix = ME_NO_BEST_QUAR_PIXEL;
 
   SQuarRefineParams sParams;
-  static int32_t iMvQuarAddX[10] = {0, 0, -1, 1, 0, 0, 0, -1, 1, 0};
-  int32_t* pMvQuarAddY = iMvQuarAddX + 3;
+  static const int32_t iMvQuarAddX[10] = {0, 0, -1, 1, 0, 0, 0, -1, 1, 0};
+  const int32_t* pMvQuarAddY = iMvQuarAddX + 3;
   uint8_t* pBestPredInter = pRef;
   int32_t iInterBlk4Stride = ME_REFINE_BUF_STRIDE;
 
@@ -606,11 +598,10 @@ void MeRefineFracPixel (sWelsEncCtx* pEncCtx, uint8_t* pMemPredInterMb, SWelsME*
   int32_t iCurCost;
   int32_t iBestHalfPix;
 
-  if ((pFunc->sSampleDealingFuncs.pfMeCost == pFunc->sSampleDealingFuncs.pfSampleSatd)
-      && (pFunc->sSampleDealingFuncs.pfMdCost == pFunc->sSampleDealingFuncs.pfSampleSatd)) {
+  if (pEncCtx->pCurDqLayer->bSatdInMdFlag) {
     iBestCost = pMe->uSadPredISatd.uiSatd + COST_MVD (pMe->pMvdCost, iMvx - pMe->sMvp.iMvX, iMvy - pMe->sMvp.iMvY);
   } else {
-    iBestCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiPixel] (pEncData, kiStrideEnc, pRef, kiStrideRef) +
+    iBestCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiBlockSize] (pEncData, kiStrideEnc, pRef, kiStrideRef) +
                 COST_MVD (pMe->pMvdCost, iMvx - pMe->sMvp.iMvX, iMvy - pMe->sMvp.iMvY);
   }
 
@@ -621,7 +612,7 @@ void MeRefineFracPixel (sWelsEncCtx* pEncCtx, uint8_t* pMemPredInterMb, SWelsME*
 
   //step 1: get [iWidth][iHeight+1] half pixel from vertical filter
   //===========================(0, -2)==============================//
-  iCurCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiPixel] (pEncData, kiStrideEnc, pMeRefine->pHalfPixV,
+  iCurCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiBlockSize] (pEncData, kiStrideEnc, pMeRefine->pHalfPixV,
              ME_REFINE_BUF_STRIDE) +
              COST_MVD (pMe->pMvdCost, iMvx - pMe->sMvp.iMvX, iMvy - 2 - pMe->sMvp.iMvY);
   if (iCurCost < iBestCost) {
@@ -630,7 +621,7 @@ void MeRefineFracPixel (sWelsEncCtx* pEncCtx, uint8_t* pMemPredInterMb, SWelsME*
     pBestPredInter = pMeRefine->pHalfPixV;
   }
   //===========================(0, 2)==============================//
-  iCurCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiPixel] (pEncData, kiStrideEnc,
+  iCurCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiBlockSize] (pEncData, kiStrideEnc,
              pMeRefine->pHalfPixV + ME_REFINE_BUF_STRIDE, ME_REFINE_BUF_STRIDE) +
              COST_MVD (pMe->pMvdCost, iMvx - pMe->sMvp.iMvX, iMvy + 2 - pMe->sMvp.iMvY);
   if (iCurCost < iBestCost) {
@@ -643,7 +634,7 @@ void MeRefineFracPixel (sWelsEncCtx* pEncCtx, uint8_t* pMemPredInterMb, SWelsME*
   //step 2: get [iWidth][iHeight+1] half pixel from horizon filter
 
   //===========================(-2, 0)==============================//
-  iCurCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiPixel] (pEncData, kiStrideEnc, pMeRefine->pHalfPixH,
+  iCurCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiBlockSize] (pEncData, kiStrideEnc, pMeRefine->pHalfPixH,
              ME_REFINE_BUF_STRIDE) +
              COST_MVD (pMe->pMvdCost, iMvx - 2 - pMe->sMvp.iMvX, iMvy - pMe->sMvp.iMvY);
   if (iCurCost < iBestCost) {
@@ -652,7 +643,7 @@ void MeRefineFracPixel (sWelsEncCtx* pEncCtx, uint8_t* pMemPredInterMb, SWelsME*
     pBestPredInter = pMeRefine->pHalfPixH;
   }
   //===========================(2, 0)===============================//
-  iCurCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiPixel] (pEncData, kiStrideEnc, pMeRefine->pHalfPixH + 1,
+  iCurCost = pFunc->sSampleDealingFuncs.pfMeCost[pMe->uiBlockSize] (pEncData, kiStrideEnc, pMeRefine->pHalfPixH + 1,
              ME_REFINE_BUF_STRIDE) +
              COST_MVD (pMe->pMvdCost, iMvx + 2 - pMe->sMvp.iMvX, iMvy - pMe->sMvp.iMvY);
   if (iCurCost < iBestCost) {
@@ -773,17 +764,8 @@ void MeRefineFracPixel (sWelsEncCtx* pEncCtx, uint8_t* pMemPredInterMb, SWelsME*
     pBestPredInter = pRef;
     iInterBlk4Stride = kiStrideRef;
   }
-  if (MB_WIDTH_LUMA == iWidth && MB_HEIGHT_LUMA == iHeight) { //P16x16
-    pFunc->pfCopy16x16NotAligned (pMemPredInterMb, MB_WIDTH_LUMA, pBestPredInter,
-                                  iInterBlk4Stride);	// dst can be align with 16 bytes, but not sure at pSrc, 12/29/2011
-  } else if (MB_WIDTH_LUMA == iWidth && MB_HEIGHT_CHROMA == iHeight) { //P16x8
-    pFunc->pfCopy16x8NotAligned (pMemPredInterMb, MB_WIDTH_LUMA, pBestPredInter,
-                                 iInterBlk4Stride);	// dst can be align with 16 bytes, but not sure at pSrc, 12/29/2011
-  } else if (MB_WIDTH_CHROMA == iWidth && MB_HEIGHT_LUMA == iHeight) { //P8x16
-    pFunc->pfCopy8x16Aligned (pMemPredInterMb, MB_WIDTH_LUMA, pBestPredInter, iInterBlk4Stride);
-  } else { //P8x8
-    pFunc->pfCopy8x8Aligned (pMemPredInterMb, MB_WIDTH_LUMA, pBestPredInter, iInterBlk4Stride);
-  }
+  pMeRefine->pfCopyBlockByMode (pMemPredInterMb, MB_WIDTH_LUMA, pBestPredInter,
+                                iInterBlk4Stride);
 }
 
 void InitBlkStrideWithRef (int32_t* pBlkStride, const int32_t kiStrideRef) {
@@ -813,9 +795,9 @@ void InitBlkStrideWithRef (int32_t* pBlkStride, const int32_t kiStrideRef) {
  * iMvdSz = (648*2+1) or (972*2+1);
  */
 void MvdCostInit (uint16_t* pMvdCostInter, const int32_t kiMvdSz) {
-  const int32_t kiSz		= kiMvdSz >> 1;
-  uint16_t* pNegMvd		= pMvdCostInter;
-  uint16_t* pPosMvd		= pMvdCostInter + kiSz + 1;
+  const int32_t kiSz        = kiMvdSz >> 1;
+  uint16_t* pNegMvd         = pMvdCostInter;
+  uint16_t* pPosMvd         = pMvdCostInter + kiSz + 1;
   const int32_t* kpQpLambda = &g_kiQpCostTable[0];
   int32_t i, j;
 
@@ -825,15 +807,15 @@ void MvdCostInit (uint16_t* pMvdCostInter, const int32_t kiMvdSz) {
     int32_t iPosSe = 1;
 
     for (j = 0; j < kiSz; j += 4) {
-      *pNegMvd++	= kiLambda * BsSizeSE (iNegSe++);
-      *pNegMvd++	= kiLambda * BsSizeSE (iNegSe++);
-      *pNegMvd++	= kiLambda * BsSizeSE (iNegSe++);
-      *pNegMvd++	= kiLambda * BsSizeSE (iNegSe++);
+      *pNegMvd++ = kiLambda * BsSizeSE (iNegSe++);
+      *pNegMvd++ = kiLambda * BsSizeSE (iNegSe++);
+      *pNegMvd++ = kiLambda * BsSizeSE (iNegSe++);
+      *pNegMvd++ = kiLambda * BsSizeSE (iNegSe++);
 
-      *pPosMvd++	= kiLambda * BsSizeSE (iPosSe++);
-      *pPosMvd++	= kiLambda * BsSizeSE (iPosSe++);
-      *pPosMvd++	= kiLambda * BsSizeSE (iPosSe++);
-      *pPosMvd++	= kiLambda * BsSizeSE (iPosSe++);
+      *pPosMvd++ = kiLambda * BsSizeSE (iPosSe++);
+      *pPosMvd++ = kiLambda * BsSizeSE (iPosSe++);
+      *pPosMvd++ = kiLambda * BsSizeSE (iPosSe++);
+      *pPosMvd++ = kiLambda * BsSizeSE (iPosSe++);
     }
     *pNegMvd = kiLambda;
     pNegMvd += kiSz + 1;
@@ -842,12 +824,12 @@ void MvdCostInit (uint16_t* pMvdCostInter, const int32_t kiMvdSz) {
 }
 
 void PredictSad (int8_t* pRefIndexCache, int32_t* pSadCostCache, int32_t uiRef, int32_t* pSadPred) {
-  const int32_t kiRefB	= pRefIndexCache[1];//top g_uiCache12_8x8RefIdx[0] - 4
-  int32_t iRefC			= pRefIndexCache[5];//top-right g_uiCache12_8x8RefIdx[0] - 2
-  const int32_t kiRefA	= pRefIndexCache[6];//left g_uiCache12_8x8RefIdx[0] - 1
-  const int32_t kiSadB		= pSadCostCache[1];
-  int32_t iSadC			= pSadCostCache[2];
-  const int32_t kiSadA		= pSadCostCache[3];
+  const int32_t kiRefB  = pRefIndexCache[1];//top g_uiCache12_8x8RefIdx[0] - 4
+  int32_t iRefC         = pRefIndexCache[5];//top-right g_uiCache12_8x8RefIdx[0] - 2
+  const int32_t kiRefA  = pRefIndexCache[6];//left g_uiCache12_8x8RefIdx[0] - 1
+  const int32_t kiSadB  = pSadCostCache[1];
+  int32_t iSadC         = pSadCostCache[2];
+  const int32_t kiSadA  = pSadCostCache[3];
 
   int32_t iCount;
 
@@ -873,7 +855,7 @@ void PredictSad (int8_t* pRefIndexCache, int32_t* pSadCostCache, int32_t uiRef, 
       *pSadPred = iSadC;
       break;
     default:
-      *pSadPred = WELS_MEDIAN (kiSadA, kiSadB, iSadC);
+      *pSadPred = WelsMedian (kiSadA, kiSadB, iSadC);
       break;
     }
   }
@@ -885,15 +867,15 @@ void PredictSad (int8_t* pRefIndexCache, int32_t* pSadCostCache, int32_t uiRef, 
 }
 
 
-void PredictSadSkip (int8_t* pRefIndexCache, bool_t* pMbSkipCache, int32_t* pSadCostCache, int32_t uiRef,
+void PredictSadSkip (int8_t* pRefIndexCache, bool* pMbSkipCache, int32_t* pSadCostCache, int32_t uiRef,
                      int32_t* iSadPredSkip) {
-  const int32_t kiRefB	= pRefIndexCache[1];//top g_uiCache12_8x8RefIdx[0] - 4
-  int32_t iRefC			= pRefIndexCache[5];//top-right g_uiCache12_8x8RefIdx[0] - 2
-  const int32_t kiRefA	= pRefIndexCache[6];//left g_uiCache12_8x8RefIdx[0] - 1
-  const int32_t kiSadB		= (pMbSkipCache[1] == 1 ? pSadCostCache[1] : 0);
-  int32_t iSadC			= (pMbSkipCache[2] == 1 ? pSadCostCache[2] : 0);
-  const int32_t kiSadA		= (pMbSkipCache[3] == 1 ? pSadCostCache[3] : 0);
-  int32_t iRefSkip		= pMbSkipCache[2];
+  const int32_t kiRefB  = pRefIndexCache[1];//top g_uiCache12_8x8RefIdx[0] - 4
+  int32_t iRefC         = pRefIndexCache[5];//top-right g_uiCache12_8x8RefIdx[0] - 2
+  const int32_t kiRefA  = pRefIndexCache[6];//left g_uiCache12_8x8RefIdx[0] - 1
+  const int32_t kiSadB  = (pMbSkipCache[1] == 1 ? pSadCostCache[1] : 0);
+  int32_t iSadC         = (pMbSkipCache[2] == 1 ? pSadCostCache[2] : 0);
+  const int32_t kiSadA  = (pMbSkipCache[3] == 1 ? pSadCostCache[3] : 0);
+  int32_t iRefSkip      = pMbSkipCache[2];
 
   int32_t iCount = 0;
 
@@ -920,7 +902,7 @@ void PredictSadSkip (int8_t* pRefIndexCache, bool_t* pMbSkipCache, int32_t* pSad
       *iSadPredSkip = iSadC;
       break;
     default:
-      *iSadPredSkip = WELS_MEDIAN (kiSadA, kiSadB, iSadC);
+      *iSadPredSkip = WelsMedian (kiSadA, kiSadB, iSadC);
       break;
     }
   }

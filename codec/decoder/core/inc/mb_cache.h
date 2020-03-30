@@ -38,31 +38,24 @@
 
 namespace WelsDec {
 
-//#pragma pack(1)
-
 #define REF_NOT_AVAIL    -2
 #define REF_NOT_IN_LIST  -1  //intra
 
 /*
- *	MB Cache information, such one cache should be defined within a slice
+ *  MB Cache information, such one cache should be defined within a slice
  */
 /*
- * Cache for Luma				Cache for Chroma(Cb, Cr)
+ * Cache for Luma               Cache for Chroma(Cb, Cr)
  *
- *	TL T T T T					TL T T
- *	 L - - - -					 L - -
- *	 L - - - -					 L - - TR
- *	 L - - - -
+ *  TL T T T T                  TL T T
+ *   L - - - -                   L - -
+ *   L - - - -                   L - - TR
+ *   L - - - -
  *   L - - - - TR
  *
  */
 
 ////////////////////////mapping scan index////////////////////////
-
-// for data sharing cross modules and try to reduce size of binary generated
-extern const uint8_t g_kuiMbNonZeroCountIdx[24];
-extern const uint8_t g_kuiCache30ScanIdx[16];
-extern const uint8_t g_kuiCacheNzcScanIdx[24];
 
 extern const uint8_t g_kuiScan4[16];
 
@@ -76,7 +69,11 @@ int32_t iLeftType;
 int32_t iTopType;
 int32_t iLeftTopType;
 int32_t iRightTopType;
-} SNeighAvail, *PNeighAvail;
+
+int8_t  iTopCbp;
+int8_t  iLeftCbp;
+int8_t iDummy[2]; //for align
+} SWelsNeighAvail, *PWelsNeighAvail;
 
 } // namespace WelsDec
 

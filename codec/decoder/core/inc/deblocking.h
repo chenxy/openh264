@@ -29,11 +29,11 @@
  *     POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * \file	deblocking.h
+ * \file    deblocking.h
  *
- * \brief	Interfaces introduced in frame deblocking filtering
+ * \brief   Interfaces introduced in frame deblocking filtering
  *
- * \date	05/14/2009 Created
+ * \date    05/14/2009 Created
  *
  *************************************************************************************
  */
@@ -42,91 +42,77 @@
 #define WELS_DEBLOCKING_H__
 
 #include "decoder_context.h"
-
-//#pragma pack(1)
-
+#include "deblocking_common.h"
 namespace WelsDec {
 
 /*!
- * \brief	deblocking module initialize
+ * \brief   deblocking module initialize
  *
- * \param	pf
+ * \param   pf
  *          cpu
  *
- * \return	NONE
+ * \return  NONE
  */
 
-void_t  DeblockingInit (PDeblockingFunc pDeblockingFunc,  int32_t iCpu);
+void  DeblockingInit (PDeblockingFunc pDeblockingFunc,  int32_t iCpu);
 
 
 /*!
- * \brief	deblocking filtering target slice
+ * \brief   deblocking filtering target slice
  *
- * \param	dec			Wels decoder context
+ * \param   dec         Wels decoder context
  *
- * \return	NONE
+ * \return  NONE
  */
-void_t WelsDeblockingFilterSlice (PWelsDecoderContext pCtx, PDeblockingFilterMbFunc pDeblockMb);
+void WelsDeblockingFilterSlice (PWelsDecoderContext pCtx, PDeblockingFilterMbFunc pDeblockMb);
 
 /*!
- * \brief	pixel deblocking filtering
+* \brief   AVC slice init deblocking filtering target layer
+*
+* \in and out param   SDeblockingFilter
+* \in and out param   iFilterIdc
+*
+* \return  NONE
+*/
+void WelsDeblockingInitFilter (PWelsDecoderContext pCtx, SDeblockingFilter& pFilter, int32_t& iFilterIdc);
+
+/*!
+* \brief   AVC MB deblocking filtering target layer
+*
+* \param   DqLayer which has the current location of MB to be deblocked.
+*
+* \return  NONE
+*/
+void WelsDeblockingFilterMB (PDqLayer pCurDqLayer, SDeblockingFilter& pFilter, int32_t& iFilterIdc,
+                             PDeblockingFilterMbFunc pDeblockMb);
+
+/*!
+ * \brief   pixel deblocking filtering
  *
- * \param	filter			      deblocking filter
- * \param	pix	                  pixel value
- * \param	stride	              frame stride
- * \param	bs	                  boundary strength
+ * \param   filter                deblocking filter
+ * \param   pix                   pixel value
+ * \param   stride                frame stride
+ * \param   bs                    boundary strength
  *
- * \return	NONE
+ * \return  NONE
  */
 
-uint32_t DeblockingBsMarginalMBAvcbase (PDqLayer pCurDqLayer, int32_t iEdge, int32_t iNeighMb, int32_t iMbXy);
+uint32_t DeblockingBsMarginalMBAvcbase (PDeblockingFilter  pFilter, PDqLayer pCurDqLayer, int32_t iEdge,
+                                        int32_t iNeighMb, int32_t iMbXy);
+uint32_t DeblockingBSliceBsMarginalMBAvcbase (PDqLayer pCurDqLayer, int32_t iEdge, int32_t iNeighMb, int32_t iMbXy);
 
 int32_t DeblockingAvailableNoInterlayer (PDqLayer pCurDqLayer, int32_t iFilterIdc);
 
-void_t DeblockingIntraMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int32_t iBoundryFlag);
-void_t DeblockingInterMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, uint8_t nBS[2][4][4], int32_t iBoundryFlag);
+void WelsDeblockingMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int32_t iBoundryFlag);
 
-void_t WelsDeblockingMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int32_t iBoundryFlag);
-
-void_t DeblockLumaLt4V_c (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* pTc);
-void_t DeblockLumaEq4V_c (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta);
-
-void_t DeblockLumaLt4H_c (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* pTc);
-void_t DeblockLumaEq4H_c (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta);
-
-void_t DeblockChromaLt4V_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
-                            int8_t* pTc);
-void_t DeblockChromaEq4V_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta);
-
-void_t DeblockChromaLt4H_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
-                            int8_t* pTc);
-void_t DeblockChromaEq4H_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta);
-
-#if defined(__cplusplus)
-extern "C" {
-#endif//__cplusplus
-
-#ifdef  X86_ASM
-void DeblockLumaLt4V_sse2 (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* pTc);
-void DeblockLumaEq4V_sse2 (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta);
-void DeblockLumaTransposeH2V_sse2 (uint8_t* pPixY, int32_t iStride, uint8_t* pDst);
-void DeblockLumaTransposeV2H_sse2 (uint8_t* pPixY, int32_t iStride, uint8_t* pSrc);
-void DeblockLumaLt4H_sse2 (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* pTc);
-void DeblockLumaEq4H_sse2 (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta);
-void DeblockChromaEq4V_sse2 (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta);
-void DeblockChromaLt4V_sse2 (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
-                             int8_t* pTC);
-void DeblockChromaEq4H_sse2 (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta);
-void DeblockChromaLt4H_sse2 (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
-                             int8_t* pTC);
-#endif
-#if defined(__cplusplus)
+inline int8_t* GetPNzc (PDqLayer pCurDqLayer, int32_t iMbXy) {
+  if (pCurDqLayer->pDec != NULL && pCurDqLayer->pDec->pNzc != NULL) {
+    return pCurDqLayer->pDec->pNzc[iMbXy];
+  }
+  return pCurDqLayer->pNzc[iMbXy];
 }
-#endif//__cplusplus
 
 } // namespace WelsDec
-
-//#pragma pack()
 
 #endif //WELS_DEBLOCKING_H__
 
