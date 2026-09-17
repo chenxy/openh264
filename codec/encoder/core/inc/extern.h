@@ -29,11 +29,11 @@
  *     POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * \file	extern.h
+ * \file    extern.h
  *
- * \brief	extern interfaces between core and plus of wels encoder
+ * \brief   extern interfaces between core and plus of wels encoder
  *
- * \date	4/21/2009 Created
+ * \date    4/21/2009 Created
  *
  *************************************************************************************
  */
@@ -43,76 +43,80 @@
 #include "typedefs.h"
 #include "encoder_context.h"
 
-namespace WelsSVCEnc {
-
-//#pragma pack()
+namespace WelsEnc {
 
 /*!
- * \brief	initialize source picture body
- * \param	kpSrc		SSourcePicture*
- * \param	kiCsp		internal csp format
- * \param	kiWidth	widht of picture in pixels
- * \param	kiHeight	height of picture in pixels
- * \return	successful - 0; otherwise none 0 for failed
+ * \brief   initialize source picture body
+ * \param   kpSrc       SSourcePicture*
+ * \param   kiCsp       internal csp format
+ * \param   kiWidth widht of picture in pixels
+ * \param   kiHeight    height of picture in pixels
+ * \return  successful - 0; otherwise none 0 for failed
  */
 int32_t InitPic (const void* kpSrc, const int32_t kiCsp, const int32_t kiWidth, const int32_t kiHeight);
 
 /*
- *	SVC core encoder external interfaces
+ *  SVC core encoder external interfaces
  */
 
 /*!
- * \brief	validate checking in parameter configuration
- * \pParam	pParam		SWelsSvcCodingParam*
- * \return	successful - 0; otherwise none 0 for failed
+ * \brief   validate checking in parameter configuration
+ * \pParam  pParam      SWelsSvcCodingParam*
+ * \return  successful - 0; otherwise none 0 for failed
  */
-int32_t ParamValidationExt (void* pParam);
+int32_t ParamValidationExt (SLogContext* pCtx, SWelsSvcCodingParam* pParam);
 
 // GOM based RC related for uiSliceNum decision
 void GomValidCheck (const int32_t kiMbWidth, const int32_t kiMbHeight, int32_t* pSliceNum);
 
 /*!
- * \brief	initialize Wels avc encoder core library
- * \param	ppCtx		sWelsEncCtx**
- * \param	para		SWelsSvcCodingParam*
- * \return	successful - 0; otherwise none 0 for failed
+ * \brief   initialize Wels avc encoder core library
+ * \param   ppCtx       sWelsEncCtx**
+ * \param   para        SWelsSvcCodingParam*
+ * \return  successful - 0; otherwise none 0 for failed
  */
-int32_t WelsInitEncoderExt (sWelsEncCtx** ppCtx, SWelsSvcCodingParam* pPara);
+int32_t WelsInitEncoderExt (sWelsEncCtx** ppCtx, SWelsSvcCodingParam* pPara, SLogContext* pLogCtx,
+                            SExistingParasetList* pExistingParasetList);
 
 /*!
- * \brief	uninitialize Wels encoder core library
- * \param	pEncCtx		sWelsEncCtx*
- * \return	none
+ * \brief   uninitialize Wels encoder core library
+ * \param   pEncCtx     sWelsEncCtx*
+ * \return  none
  */
 void WelsUninitEncoderExt (sWelsEncCtx** ppCtx);
 
 /*!
- * \brief	core svc encoding process
+ * \brief   core svc encoding process
  *
- * \param	h			sWelsEncCtx*, encoder context
- * \param	dst			FrameBSInfo*
- * \param	pSrc			SSourcePicture* for need_ds = true or SSourcePicture** for need_ds = false
- * \param	kiConfiguredLayerNum	=1 in case need_ds = true or >1 in case need_ds = false
- * \param	need_ds		Indicate whether need down sampling desired
- *						[NO in picture list case, YES in console aplication based]
- * \return	EFrameType (WELS_FRAME_TYPE_IDR/WELS_FRAME_TYPE_I/WELS_FRAME_TYPE_P)
+ * \param   h           sWelsEncCtx*, encoder context
+ * \param   pFbi        FrameBSInfo*
+ * \param   kpSrcPic    Source picture
+ * \return  EFrameType (videoFrameTypeIDR/videoFrameTypeI/videoFrameTypeP)
  */
-int32_t WelsEncoderEncodeExt (sWelsEncCtx*, void* pDst, const SSourcePicture** kppSrcList,
-                              const int32_t kiConfiguredLayerNum);
+int32_t WelsEncoderEncodeExt (sWelsEncCtx*, SFrameBSInfo* pFbi, const SSourcePicture* kpSrcPic);
+
+int32_t WelsEncoderEncodeParameterSets (sWelsEncCtx* pCtx, void* pDst);
 
 /*
  * Force coding IDR as follows
  */
-int32_t ForceCodingIDR (sWelsEncCtx* pCtx);
+int32_t ForceCodingIDR (sWelsEncCtx* pCtx,int32_t iLayerId);
 
 /*!
- * \brief	Wels SVC encoder parameters adjustment
- *			SVC adjustment results in new requirement in memory blocks adjustment
+ * \brief   Wels SVC encoder parameters adjustment
+ *          SVC adjustment results in new requirement in memory blocks adjustment
  */
+int32_t WelsBitRateVerification(SLogContext* pLogCtx,SSpatialLayerConfig* pLayerParam,int32_t iLayerId);
 int32_t WelsEncoderParamAdjust (sWelsEncCtx** ppCtx, SWelsSvcCodingParam* pNew);
-
+void WelsEncoderApplyFrameRate (SWelsSvcCodingParam* pParam);
+int32_t WelsEncoderApplyBitRate (SLogContext* pLogCtx, SWelsSvcCodingParam* pParam, int32_t iLayer);
+int32_t WelsEncoderApplyBitVaryRang(SLogContext* pLogCtx, SWelsSvcCodingParam* pParam, int32_t iRang);
+int32_t WelsEncoderApplyLTR (SLogContext* pLogCtx, sWelsEncCtx** ppCtx, SLTRConfig* pLTRValue);
+int32_t DynSliceRealloc(sWelsEncCtx* pCtx,SFrameBSInfo* pFrameBsInfo,SLayerBSInfo* pLayerBsInfo);
 int32_t FilterLTRRecoveryRequest (sWelsEncCtx* pCtx, SLTRRecoverRequest* pLTRRecoverRequest);
-
+void CheckProfileSetting (SLogContext* pLogCtx,SWelsSvcCodingParam* pParam,int32_t iLayer, EProfileIdc uiProfileIdc);
+void CheckLevelSetting (SLogContext* pLogCtx,SWelsSvcCodingParam* pParam,int32_t iLayer, ELevelIdc uiLevelIdc);
+void CheckReferenceNumSetting (SLogContext* pLogCtx,  SWelsSvcCodingParam* pParam,int32_t iNumRef);
 void FilterLTRMarkingFeedback (sWelsEncCtx* pCtx, SLTRMarkingFeedback* pLTRMarkingFeedback);
 }
 

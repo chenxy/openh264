@@ -37,41 +37,14 @@
 
 namespace WelsDec {
 
-#define MAX_NEG_CROP 1024
-uint8_t g_ClipTable[256 + 2 *
-                    MAX_NEG_CROP];	//the front 1024 is 0, the back 1024 is 255, the middle 256 elements is 0-255
-
-
-/* init pClip table to pClip the final dct data */
-void_t InitDctClipTable (void_t) {
-  uint8_t* p		        = &g_ClipTable[0];
-  const int32_t kiLength	= MAX_NEG_CROP * sizeof (uint8_t);
-  int32_t i               = 0;
-
-  do {
-    const int32_t kiIdx = MAX_NEG_CROP + i;
-
-    p[kiIdx]	= i;
-    p[1 + kiIdx]	= 1 + i;
-    p[2 + kiIdx]	= 2 + i;
-    p[3 + kiIdx]	= 3 + i;
-
-    i += 4;
-  } while (i < 256);
-
-  memset (p, 0, kiLength);
-  memset (p + MAX_NEG_CROP + 256, 0xFF, kiLength);
-}
-
 //NOTE::: p_RS should NOT be modified and it will lead to mismatch with JSVM.
 //        so should allocate kA array to store the temporary value (idct).
-void_t IdctResAddPred_c (uint8_t* pPred, const int32_t kiStride, int16_t* pRs) {
+void IdctResAddPred_c (uint8_t* pPred, const int32_t kiStride, int16_t* pRs) {
   int16_t iSrc[16];
 
-  uint8_t* pDst			= pPred;
-  const int32_t kiStride2	= kiStride << 1;
-  const int32_t kiStride3	= kiStride + kiStride2;
-  uint8_t* pClip			= &g_ClipTable[MAX_NEG_CROP];
+  uint8_t* pDst           = pPred;
+  const int32_t kiStride2 = kiStride << 1;
+  const int32_t kiStride3 = kiStride + kiStride2;
   int32_t i;
 
   for (i = 0; i < 4; i++) {
@@ -88,23 +61,113 @@ void_t IdctResAddPred_c (uint8_t* pPred, const int32_t kiStride, int16_t* pRs) {
   }
 
   for (i = 0; i < 4; i++) {
-    int32_t kT1	= iSrc[i]	+ iSrc[i + 8];
-    int32_t kT2	= iSrc[i + 4] + (iSrc[i + 12] >> 1);
-    int32_t kT3	= (32 + kT1 + kT2) >> 6;
-    int32_t kT4	= (32 + kT1 - kT2) >> 6;
+    int32_t kT1 = iSrc[i]     +  iSrc[i + 8];
+    int32_t kT2 = iSrc[i + 4] + (iSrc[i + 12] >> 1);
+    int32_t kT3 = (32 + kT1 + kT2) >> 6;
+    int32_t kT4 = (32 + kT1 - kT2) >> 6;
 
-    pDst[i] = pClip[ kT3 + pPred[i] ];
-    pDst[i + kiStride3] = pClip[ kT4 + pPred[i + kiStride3] ];
+    pDst[i] = WelsClip1 (kT3 + pPred[i]);
+    pDst[i + kiStride3] = WelsClip1 (kT4 + pPred[i + kiStride3]);
 
-    kT1	= iSrc[i] - iSrc[i + 8];
-    kT2	= (iSrc[i + 4] >> 1) - iSrc[i + 12];
-    pDst[i + kiStride] = pClip[ ((32 + kT1 + kT2) >> 6) + pDst[i + kiStride] ];
-    pDst[i + kiStride2] = pClip[ ((32 + kT1 - kT2) >> 6) + pDst[i + kiStride2] ];
+    kT1 = iSrc[i] - iSrc[i + 8];
+    kT2 = (iSrc[i + 4] >> 1) - iSrc[i + 12];
+    pDst[i + kiStride] = WelsClip1 (((32 + kT1 + kT2) >> 6) + pDst[i + kiStride]);
+    pDst[i + kiStride2] = WelsClip1 (((32 + kT1 - kT2) >> 6) + pDst[i + kiStride2]);
   }
 }
 
-void_t GetI4LumaIChromaAddrTable (int32_t* pBlockOffset, const int32_t kiYStride, const int32_t kiUVStride) {
-  int32_t* pOffset	   = pBlockOffset;
+void IdctResAddPred8x8_c (uint8_t* pPred, const int32_t kiStride, int16_t* pRs) {
+  // To make the ASM code easy to write, should using one funciton to apply hor and ver together, such as we did on HEVC
+  // Ugly code, just for easy debug, the final version need optimization
+  int16_t p[8], b[8];
+  int16_t a[4];
+
+  int16_t iTmp[64];
+  int16_t iRes[64];
+
+  // Horizontal
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      p[j] = pRs[j + (i << 3)];
+    }
+    a[0] = p[0] + p[4];
+    a[1] = p[0] - p[4];
+    a[2] = p[6] - (p[2] >> 1);
+    a[3] = p[2] + (p[6] >> 1);
+
+    b[0] =  a[0] + a[3];
+    b[2] =  a[1] - a[2];
+    b[4] =  a[1] + a[2];
+    b[6] =  a[0] - a[3];
+
+    a[0] = -p[3] + p[5] - p[7] - (p[7] >> 1);
+    a[1] =  p[1] + p[7] - p[3] - (p[3] >> 1);
+    a[2] = -p[1] + p[7] + p[5] + (p[5] >> 1);
+    a[3] =  p[3] + p[5] + p[1] + (p[1] >> 1);
+
+    b[1] =  a[0] + (a[3] >> 2);
+    b[3] =  a[1] + (a[2] >> 2);
+    b[5] =  a[2] - (a[1] >> 2);
+    b[7] =  a[3] - (a[0] >> 2);
+
+    iTmp[0 + (i << 3)] = b[0] + b[7];
+    iTmp[1 + (i << 3)] = b[2] - b[5];
+    iTmp[2 + (i << 3)] = b[4] + b[3];
+    iTmp[3 + (i << 3)] = b[6] + b[1];
+    iTmp[4 + (i << 3)] = b[6] - b[1];
+    iTmp[5 + (i << 3)] = b[4] - b[3];
+    iTmp[6 + (i << 3)] = b[2] + b[5];
+    iTmp[7 + (i << 3)] = b[0] - b[7];
+  }
+
+  //Vertical
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      p[j] = iTmp[i + (j << 3)];
+    }
+
+    a[0] =  p[0] + p[4];
+    a[1] =  p[0] - p[4];
+    a[2] =  p[6] - (p[2] >> 1);
+    a[3] =  p[2] + (p[6] >> 1);
+
+    b[0] = a[0] + a[3];
+    b[2] = a[1] - a[2];
+    b[4] = a[1] + a[2];
+    b[6] = a[0] - a[3];
+
+    a[0] = -p[3] + p[5] - p[7] - (p[7] >> 1);
+    a[1] =  p[1] + p[7] - p[3] - (p[3] >> 1);
+    a[2] = -p[1] + p[7] + p[5] + (p[5] >> 1);
+    a[3] =  p[3] + p[5] + p[1] + (p[1] >> 1);
+
+
+    b[1] =  a[0] + (a[3] >> 2);
+    b[7] =  a[3] - (a[0] >> 2);
+    b[3] =  a[1] + (a[2] >> 2);
+    b[5] =  a[2] - (a[1] >> 2);
+
+    iRes[ (0 << 3) + i] = b[0] + b[7];
+    iRes[ (1 << 3) + i] = b[2] - b[5];
+    iRes[ (2 << 3) + i] = b[4] + b[3];
+    iRes[ (3 << 3) + i] = b[6] + b[1];
+    iRes[ (4 << 3) + i] = b[6] - b[1];
+    iRes[ (5 << 3) + i] = b[4] - b[3];
+    iRes[ (6 << 3) + i] = b[2] + b[5];
+    iRes[ (7 << 3) + i] = b[0] - b[7];
+  }
+
+  uint8_t* pDst = pPred;
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      pDst[i * kiStride + j] = WelsClip1 (((32 + iRes[ (i << 3) + j]) >> 6) + pDst[i * kiStride + j]);
+    }
+  }
+
+}
+
+void GetI4LumaIChromaAddrTable (int32_t* pBlockOffset, const int32_t kiYStride, const int32_t kiUVStride) {
+  int32_t* pOffset = pBlockOffset;
   int32_t i;
   const uint8_t kuiScan0 = g_kuiScan8[0];
 

@@ -29,11 +29,11 @@
  *     POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * \file	picture_handle.h
+ * \file    picture_handle.h
  *
- * \brief	picture pData handling
+ * \brief   picture pData handling
  *
- * \date	5/20/2009 Created
+ * \date    5/20/2009 Created
  *
  *************************************************************************************/
 #if !defined(WELS_ENCODER_PICTURE_HANDLE_H__)
@@ -43,30 +43,24 @@
 #include "typedefs.h"
 #include "memory_align.h"
 
-namespace WelsSVCEnc {
+namespace WelsEnc {
 /*!
- * \brief	alloc picture pData with borders for each plane based width and height of picture
- * \param	cx				width of picture in pixels
- * \param	cy				height of picture in pixels
- * \param	need_data		need pData allocation
- * \pram	need_expand		need borders expanding
- * \return	successful if effective picture pointer returned, otherwise failed with NULL
+ * \brief   alloc picture pData with borders for each plane based width and height of picture
+ * \param   kiWidth                 width of picture in pixels
+ * \param   kiHeight                height of picture in pixels
+ * \param   bNeedMbInfo             need pData allocation
+ * \pram    iNeedFeatureStorage     need storage for FME
+ * \return  successful if effective picture pointer returned, otherwise failed with NULL
  */
-SPicture* AllocPicture (CMemoryAlign* pMa, const int32_t kiWidth, const int32_t kiHeight, bool_t bNeedMbInfo);
+SPicture* AllocPicture (CMemoryAlign* pMa, const int32_t kiWidth, const int32_t kiHeight, bool bNeedMbInfo,
+                        int32_t iNeedFeatureStorage);
 
 /*!
- * \brief	free picture pData planes
- * \param	pic		picture pointer to be destoryed
- * \return	none
+ * \brief   free picture pData planes
+ * \param   pic     picture pointer to be destoryed
+ * \return  none
  */
 void FreePicture (CMemoryAlign* pMa, SPicture** ppPic);
 
-/*!
-* \brief	exchange two picture pData planes
-* \param	ppPic1		picture pointer to picture 1
-* \param	ppPic2		picture pointer to picture 2
-* \return	none
-*/
-void WelsExchangeSpatialPictures (SPicture** ppPic1, SPicture** ppPic2);
 }
 #endif//WELS_ENCODER_PICTURE_HANDLE_H__

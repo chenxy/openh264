@@ -29,11 +29,11 @@
  *     POSSIBILITY OF SUCH DAMAGE.
  *
  *
- * \file	rec_mb.h
+ * \file    rec_mb.h
  *
- * \brief	interfaces for all macroblock decoding process after mb syntax parsing and residual decoding with cavlc.
+ * \brief   interfaces for all macroblock decoding process after mb syntax parsing and residual decoding with cavlc.
  *
- * \date	3/4/2009 Created
+ * \date    3/4/2009 Created
  *
  *************************************************************************************
  */
@@ -47,11 +47,38 @@
 
 #include "decoder_context.h"
 
-//#pragma pack(1)
-
 namespace WelsDec {
 
-void_t WelsFillRecNeededMbInfo (PWelsDecoderContext pCtx, bool_t bOutput, PDqLayer pCurLayer);
+#define WELS_B_MB_REC_VERIFY(uiRet) do{ \
+  uint32_t uiRetTmp = (uint32_t)uiRet; \
+  if( uiRetTmp != ERR_NONE ) \
+    return uiRetTmp; \
+}while(0)
+
+typedef struct TagMCRefMember {
+  uint8_t* pDstY;
+  uint8_t* pDstU;
+  uint8_t* pDstV;
+
+  uint8_t* pSrcY;
+  uint8_t* pSrcU;
+  uint8_t* pSrcV;
+
+  int32_t iSrcLineLuma;
+  int32_t iSrcLineChroma;
+
+  int32_t iDstLineLuma;
+  int32_t iDstLineChroma;
+
+  int32_t iPicWidth;
+  int32_t iPicHeight;
+} sMCRefMember;
+
+void BaseMC (PWelsDecoderContext pCtx, sMCRefMember* pMCRefMem, const int32_t& listIdx, const int8_t& iRefIdx,
+             int32_t iXOffset, int32_t iYOffset, SMcFunc* pMCFunc,
+             int32_t iBlkWidth, int32_t iBlkHeight, int16_t iMVs[2]);
+
+void WelsFillRecNeededMbInfo (PWelsDecoderContext pCtx, bool bOutput, PDqLayer pCurDqLayer);
 
 int32_t RecI4x4Mb (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer);
 
@@ -59,18 +86,19 @@ int32_t RecI4x4Luma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLe
 
 int32_t RecI4x4Chroma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer);
 
+int32_t RecI8x8Mb (int32_t iMbXy, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer);
+
+int32_t RecI8x8Luma (int32_t iMbXy, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer);
+
 int32_t RecI16x16Mb (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer);
 
 int32_t RecChroma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer);
 
-void_t GetInterPred (uint8_t* pPredY, uint8_t* pPredCb, uint8_t* pPredCr, PWelsDecoderContext pCtx);
+int32_t GetInterPred (uint8_t* pPredY, uint8_t* pPredCb, uint8_t* pPredCr, PWelsDecoderContext pCtx);
 
-void_t FillBufForMc (uint8_t* pBuf, int32_t iBufStride, uint8_t* pSrc, int32_t iSrcStride, int32_t iSrcOffset,
-                     int32_t iBlockWidth, int32_t iBlockHeight, int32_t iSrcX, int32_t iSrcY, int32_t iPicWidth, int32_t iPicHeight);
+int32_t GetInterBPred (uint8_t* pPredYCbCr[3], uint8_t* pTempPredYCbCr[3], PWelsDecoderContext pCtx);
 
 } // namespace WelsDec
-
-//#pragma pack()
 
 #endif //WELS_REC_MB_H__
 
